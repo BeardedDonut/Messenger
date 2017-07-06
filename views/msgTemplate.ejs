@@ -1,0 +1,169 @@
+<head>
+    <!--Begin External Libraries And Link-->
+    <script src="http://www.google.com/jsapi" type="text/javascript"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js" type="text/javascript"></script>
+    <script type="text/javascript" src="index.js"></script>
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+
+
+    <link rel="stylesheet" type="text/css" href="index.css">
+    <link rel="stylesheet" type="text/css" href="index.css">
+    <meta charset="UTF-8">
+
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+          integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+            integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+            crossorigin="anonymous"></script>
+
+    <!--End External Libraries And Link-->
+    <title>Module2</title>
+    <style>
+
+    </style>
+</head>
+
+<body>
+<!-- BEGIN -->
+<div class="container">
+
+    <div class="">
+        <div>
+            <h1 class="text-center"> Welcome <%= My_Client_Name %> </h1>
+            <hr>
+            <!-- Begin Message List -->
+            <div  class="list-group" style="float: left ;margin-right: 25px ; width: 50% ; height: 50%;">
+                <a href="#" class="list-group-item active">
+                    Messages :
+                </a>
+                <div  id="message_list" style="padding: 2px ; margin: 2px ; height: 90%; overflow: scroll">
+
+
+                </div>
+
+            </div>
+            <div  class="list-group" style="float : left ; width: 25% ; height: 50%;">
+                <a href="#" class="list-group-item active">
+                    Online Clients :
+                </a>
+                <div  id="Clients_List" style="padding: 2px ; margin: 2px ; height: 90%; overflow: scroll">
+
+
+                </div>
+
+            </div>
+            <!-- END  Message List -->
+
+            <br style="clear: both;">
+
+            <!-- Begin Input Forms -->
+            <form class="form-inline">
+
+                <label class="sr-only" for="client_name">Client name</label>
+                <div class="input-group col-xs-2">
+                    <div class="input-group-addon">@</div>
+                    <input class="form-control" id="client_name" placeholder="Client name" type="text">
+                </div>
+
+                <label class="sr-only" for="message">Name</label>
+                <input id="message" class="form-control" style="width: 25%" placeholder="Message" type="text">
+
+
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+            <!-- End Input Forms -->
+
+            <!-- Begin Alert -->
+            <div class="alert alert-warning col-xs-6">
+                <strong>Note!</strong> leave Client name field empty if you want to broadcast your message
+            </div>
+            <!-- End Alert -->
+
+        </div>
+
+    </div>
+
+    <script>
+        $(function () {
+            var My_Client_Name = '<%= My_Client_Name %>';
+
+            var socket = io('http://localhost:3000');
+
+            socket.emit("Login", {"client_name" : My_Client_Name});
+
+            //form submit actions
+            $('form').submit(function () {
+                var clientName = $('#client_name').val();
+                var message = $('#message').val();
+                var x = {"client_sender":My_Client_Name , "client_receiver": clientName, "msg": message};
+
+                if (clientName != '')
+                    socket.emit("CCMsg", x) //if a specific client is selected then send message to him
+                else
+                    socket.emit("Broadcast", x); //if no client specified send message as a broadcast message
+
+                $('#client_name').val('');
+                $('#message').val('');
+                return false;
+            });
+
+            //this function triggers when a Client to Client event happens
+            socket.on('CCMsg', function (msg) {
+                //append the message to the message list
+                $('#message_list').append(
+                    '<a href="#" class="list-group-item">' +
+                    '<div class="input-group ">' +
+                    '<div class="input-group-addon">' + msg.client_sender +
+                    '</div> <p class="form-control ">' + msg.message +
+                    '</p></div> </a>'
+                );
+            });
+
+            //this function triggers when a broadcast event happens
+            socket.on('Broadcast', function (msg) {
+                //append the message sent to the message list
+                $('#message_list').append(
+                    '<a href="#" class="list-group-item">' +
+                    '<div class="input-group ">' +
+                    '<div class="input-group-addon">' + msg.client_sender +
+                    '</div> <p class="form-control ">' + msg.message +
+                    '</p></div> </a>'
+                );
+            });
+
+            //this function triggers when a new client logs in
+            socket.on('Login', function (client_name) {
+                //append the user to the online users list
+                $('#Clients_List').append(
+                    '<a href="#" id="'+client_name+'" class="list-group-item">' +
+                    '<div class="input-group ">' +
+                    '<div class="input-group-addon">' + "@" +
+                    '</div> <p class="form-control ">' + client_name +
+                    '</p></div> </a>'
+                );
+            });
+
+            //this function triggers when another client logs out
+            socket.on('Logout' ,function (client_name) {
+                //remove the disconnected client from the online Clients list
+                $( '#'+client_name).remove();
+            });
+
+            //this function triggers when client tries to send message to a client which does not exist
+            socket.on('ClientNotFound' , function (msg) {
+                alert(msg);
+            });
+
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+    </script>
+</div>
+<!-- End -->
+
+</body>
